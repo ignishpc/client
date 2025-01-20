@@ -342,7 +342,7 @@ def singularity(name, output, host, default_registry, platform, force):
                 err = ""
             except docker.errors.ContainerError as ex:
                 exit_code = ex.exit_status
-                err = ex.stderr.decode(encoding="utf-8")
+                err = ex.stderr
     if exit_code != 0:
         raise RuntimeError("singularity fails with error " + str(exit_code) + "\n" + err)
 

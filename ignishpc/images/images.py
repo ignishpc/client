@@ -114,7 +114,7 @@ def _push(args):
 def _pull(args):
     client = docker.from_env()
 
-    if args.local:
+    if args.local and args.singularity is not None:
         image = client.images.get(args.image)
     else:
         print("pulling image")
@@ -136,17 +136,19 @@ def _pull(args):
         try:
             client.containers.run(
                 image=configuration.format_image("singularity"),
-                command=["singularity", "pull", "--force", target, "docker-archive:///root/ignis.image"],
+                command=["sh", "-c", f"singularity pull --force {os.path.basename(target)} docker-archive:///source && "
+                                     f"chown {os.getuid()}:{os.getgid()} {os.path.basename(target)}"],
                 remove=True,
-                mounts=[docker.types.Mount("/root", wd, "bind"),
-                        docker.types.Mount(os.path.dirname(target), os.path.dirname(target), "bind")],
+                mounts=[docker.types.Mount("/source", source, "bind"),
+                        docker.types.Mount("/target", os.path.dirname(target), "bind")],
                 platform=args.arch,
+                working_dir="/target",
                 stdout=True,
                 stderr=True,
-                user="{}:{}".format(os.getuid(), os.getgid())
             )
+
         except docker.errors.ContainerError as ex:
-            raise RuntimeError(ex.stderr.decode("utf-8"))
+            raise RuntimeError(ex.stderr)
         print("image saved in " + args.singularity)
 
 
