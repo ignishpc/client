@@ -103,7 +103,7 @@ def _container_job(args, it):
             cmd.extend(["--bind", bind])
 
         proc = subprocess.Popen(
-            args=cmd + [configuration.default_image(), "bash", "ignis-submit"] + args,
+            args=cmd + [configuration.default_image(), "ignis-submit"] + args,
             stdin=sys.stdin if it else subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdout=subprocess.PIPE,
@@ -160,7 +160,7 @@ def _container_job(args, it):
         try:
             container = docker.from_env().containers.create(
                 image=configuration.default_image(),
-                command=["bash", "ignis-submit"] + args,
+                command=["ignis-submit"] + args,
                 environment=env,
                 mounts=[to_mount(bind) for bind in binds],
                 read_only=not writable,
@@ -241,22 +241,21 @@ def _job_run(args):
         return _container_job(job + args.args, args.interactive)
 
     with tempfile.TemporaryDirectory() as tmp:
-        pipes = ["in", "out", "err", "code"]
+        configuration.set_property(f"ignis.submitter.binds./ignis-pipes", tmp)
+        files = [os.path.join(tmp, f) for f in ["run", "code", "out", "err", "script"]]
 
-        os.mkfifo(os.path.join(tmp, pipes[0]), mode=0o600)
-        os.mkfifo(os.path.join(tmp, pipes[-1]), mode=0o600)
-
-        for p in pipes:
-            configuration.set_property(f"ignis.submitter.binds./ignis-pipe/{p}", f"{os.path.join(tmp, p)}")
+        os.mkfifo(files[0], mode=0o600)
+        os.mkfifo(files[1], mode=0o600)
 
         def run_pipe():
-            while True:
-                with open(os.path.join(tmp, pipes[0])) as fifo:
-                    cmd = fifo.read()
-                with open(os.path.join(tmp, pipes[1]), "w") as out, open(os.path.join(tmp, pipes[2]), "w") as err:
-                    code = subprocess.run(args=["bash", "-c", cmd], stdout=out, stderr=err).returncode
-                with open(os.path.join(tmp, pipes[3]), "w") as file:
-                    file.write(str(code))
+            with open(files[0]) as fifo:
+                while True:
+                    run = fifo.readline()
+                    if run == "run\n":
+                        with open(files[2], "w") as out, open(files[3], "w") as err:
+                            code = subprocess.run(args=["bash", files[4]], stdout=out, stderr=err).returncode
+                        with open(files[1], "w") as file:
+                            file.write(str(code))
 
         pipe_proc = Process(target=run_pipe, name="ignis-pipe")
         try:
