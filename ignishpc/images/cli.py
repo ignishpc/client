@@ -78,8 +78,8 @@ def setup(subparsers):
 
     pull = actions.add_parser("pull", **desc("Pull a image"))
     pull.add_argument("image", action="store", help="image name")
-    pull.add_argument("-s", "--singularity", action="store", metavar="path",
-                      help="convert and store as singularity sif")
+    pull.add_argument("-s", "--singularity", "--apptainer", action="store", metavar="path",
+                      help="convert and store as sif image")
     pull.add_argument("-l", "--local", action="store_true",
                       help="use local repository to get image", default=False)
     pull.add_argument("--arch", action="store",

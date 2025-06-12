@@ -46,6 +46,13 @@ def _check_singularity():
     except:
         return "NOT FOUND"
 
+def _check_apptainer():
+    try:
+        info = subprocess.run(["apptainer", "version"], capture_output=True, encoding="utf-8", check=True)
+        return info.stdout.strip()
+    except:
+        return "NOT FOUND"
+
 
 def _info(args):
     print("Property files:")
@@ -59,6 +66,7 @@ def _info(args):
     print("Container providers:")
     print("  Docker:", _check_docker())
     print("  Singularity:", _check_singularity())
+    print("  Apptainer:", _check_apptainer())
 
     print("Job Environment: ")
     print("  Working directory:", configuration.get_string("ignis.wdir"))

@@ -27,6 +27,10 @@ ignis:
       source: "${HOME}/.ignis/images"
       default: "ignishpc.sif"
       network: "default"
+    apptainer:
+      source: "${HOME}/.ignis/images"
+      default: "ignishpc.sif"
+      network: "default"
     hostpipe: false
     writable: false
     #provider: ""
@@ -99,9 +103,10 @@ def format_image(name):
 
 def default_image():
     prefix = ""
-    if get_string("ignis.container.provider") == "singularity":
-        source = get_string("ignis.container.singularity.source")
-        image = source + ("" if source.endswith("/") else "/") + get_string("ignis.container.singularity.default")
+    provider = get_string("ignis.container.provider")
+    if get_string("ignis.container.provider") != "docker":
+        source = get_string(f"ignis.container.{provider}.source")
+        image = source + ("" if source.endswith("/") else "/") + get_string(f"ignis.container.{provider}.default")
         if os.path.exists(image) or ":" in image:
             return image
         prefix = "docker://"
@@ -110,10 +115,8 @@ def default_image():
 
 
 def network():
-    if get_string("ignis.container.provider") == "singularity":
-        return get_string("ignis.container.singularity.network")
-    else:
-        return get_string("ignis.container.docker.network")
+    provider = get_string("ignis.container.provider")
+    return get_string(f"ignis.container.{provider}.network")
 
 
 def yaml_merge(target, source):
@@ -186,6 +189,12 @@ def _check_singularity():
     except:
         return False
 
+def _check_apptainer():
+    try:
+        return subprocess.run(["apptainer", "version"], capture_output=True).returncode == 0
+    except:
+        return False
+
 
 def load_config(path):
     ok = True
@@ -197,7 +206,8 @@ def load_config(path):
                 ok = False
 
     if not has_property("ignis.container.provider"):
-        set_property("ignis.container.provider", "singularity" if _check_singularity() else "docker")
+        set_property("ignis.container.provider",
+        "apptainer" if _check_apptainer() else ("singularity" if _check_singularity() else "docker"))
 
     if not has_property("ignis.wdir"):
         set_property("ignis.wdir", os.getcwd())

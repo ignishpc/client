@@ -84,8 +84,9 @@ def _container_job(args, it):
             if isinstance(value, str):
                 env[key] = value
 
-    if configuration.get_string("ignis.container.provider") == "singularity":
-        cmd = ["singularity", "exec", "--cleanenv"]
+    provider = configuration.get_string("ignis.container.provider")
+    if provider != "docker":
+        cmd = [provider, "exec", "--cleanenv"]
 
         if wdir is not None:
             cmd.extend(["--workdir", wdir])
@@ -141,9 +142,7 @@ def _container_job(args, it):
 
         key_sock = "ignis.submitter.binds./var/run/docker.sock"
         group_add = []
-        if not root and sys.platform.startswith("darwin") and (
-                not configuration.has_property("ignis.container.provider") or
-                configuration.get_property("ignis.container.provider") == "docker"):
+        if not root and sys.platform.startswith("darwin"):
             result = docker.from_env().containers.run(
                 image="alpine:3.19",
                 remove=True,
@@ -237,7 +236,7 @@ def _job_run(args):
     job.append(args.command)
 
     if not configuration.get_bool("ignis.container.hostpipe") and \
-            not configuration.get_string("ignis.container.provider") == "singularity":
+            configuration.get_string("ignis.container.provider") == "docker":
         return _container_job(job + args.args, args.interactive)
 
     with tempfile.TemporaryDirectory() as tmp:
