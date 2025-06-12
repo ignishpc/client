@@ -3,6 +3,7 @@ import os
 import docker
 import docker.errors
 import docker.types
+import subprocess
 import fnmatch
 import datetime
 import tempfile
@@ -112,8 +113,17 @@ def _push(args):
 
 
 def _pull(args):
-    client = docker.from_env()
+    provider = configuration.get_string("ignis.container.provider")
+    if args.singularity is not None and provider != "docker":
+        source = "docker-daemon:" if args.local else "docker://"
+        image = args.image
+        if ":" not in image:
+            image += ":latest"
+        print("pulling image")
+        subprocess.run(args=[provider, "pull", "--force", args.singularity, source + image])
+        return
 
+    client = docker.from_env()
     if args.local and args.singularity is not None:
         image = client.images.get(args.image)
     else:
@@ -132,7 +142,7 @@ def _pull(args):
                 file.write(chunk)
             file.flush()
 
-        print("converting image to singularity format")
+        print("converting image to sif format")
         try:
             client.containers.run(
                 image=configuration.format_image("singularity"),
