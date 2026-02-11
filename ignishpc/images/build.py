@@ -224,8 +224,8 @@ def _run(args):
         for i, src in enumerate(args.sources):
             target = next(new_folder)
             os.mkdir(target)
-            if ":" in src:
-                field = src.split()
+            if "://" in src:
+                field = src.split("@") if "@" in src else src.split()
                 if len(field) == 2:
                     git.Repo.clone_from(field[0], target, branch=field[1])
                 else:
